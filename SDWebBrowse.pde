@@ -17,6 +17,7 @@ Server server(80);
 Sd2Card card;
 SdVolume volume;
 SdFile root;
+SdFile file;
 
 // store error strings in flash to save RAM
 #define error(s) error_P(PSTR(s))
@@ -76,9 +77,12 @@ void ListFiles(Client client, uint8_t flags) {
   // This code is just copied from SdFile.cpp in the SDFat library
   // and tweaked to print to the client output in html!
   dir_t p;
+  Serial.println("list!");
   
   root.rewind();
+  client.println("<ul>");
   while (root.readDir(p) > 0) {
+    Serial.print("read file");
     // done if past last used entry
     if (p.name[0] == DIR_NAME_FREE) break;
 
@@ -88,9 +92,8 @@ void ListFiles(Client client, uint8_t flags) {
     // only list subdirectories and files
     if (!DIR_IS_FILE_OR_SUBDIR(&p)) continue;
 
-    // print file name with possible blank fill
-    //root.printDirName(*p, flags & (LS_DATE | LS_SIZE) ? 14 : 0);
-
+    // print any indent spaces
+    client.print("<li><a href=\"");
     for (uint8_t i = 0; i < 11; i++) {
       if (p.name[i] == ' ') continue;
       if (i == 8) {
@@ -98,6 +101,19 @@ void ListFiles(Client client, uint8_t flags) {
       }
       client.print(p.name[i]);
     }
+    client.print("\">");
+    
+    // print file name with possible blank fill
+    for (uint8_t i = 0; i < 11; i++) {
+      if (p.name[i] == ' ') continue;
+      if (i == 8) {
+        client.print('.');
+      }
+      client.print(p.name[i]);
+    }
+    
+    client.print("</a>");
+    
     if (DIR_IS_SUBDIR(&p)) {
       client.print('/');
     }
@@ -113,42 +129,89 @@ void ListFiles(Client client, uint8_t flags) {
       client.print(' ');
       client.print(p.fileSize);
     }
-    client.println("<br>");
+    client.println("</li>");
   }
+  client.println("</ul>");
 }
+
+#define BUFSIZ 100
 
 void loop()
 {
+  char clientline[BUFSIZ];
+  int index = 0;
+  
   Client client = server.available();
   if (client) {
     // an http request ends with a blank line
     boolean current_line_is_blank = true;
+    
+    // reset the input buffer
+    index = 0;
+    
     while (client.connected()) {
       if (client.available()) {
         char c = client.read();
-        // if we've gotten to the end of the line (received a newline
-        // character) and the line is blank, the http request has ended,
-        // so we can send a reply
-        if (c == '\n' && current_line_is_blank) {
+        
+        if (c != '\n' && c != '\r') {
+          clientline[index] = c;
+          index++;
+          if (index >= BUFSIZ) 
+            index = BUFSIZ -1;
+          
+          // read more data!
+          continue;
+        }
+        
+        // got a \n or \r new line
+        clientline[index] = 0;
+        
+        // Got a line of data
+        Serial.println(clientline);
+        
+        if (strstr(clientline, "GET / ") != 0) {
           // send a standard http response header
           client.println("HTTP/1.1 200 OK");
           client.println("Content-Type: text/html");
           client.println();
           
           // print all the files, use a helper to keep it clean
-          //ListFiles(client, 0);
           client.println("<h2>Files:</h2>");
-          ListFiles(client, 0);
+          ListFiles(client, LS_SIZE);
+        } else if (strstr(clientline, "GET /") != 0) {
+          // this time no space after the /, so a file!
+          char *filename;
           
-          break;
+          filename = clientline + 5; // after the "GET /"
+          // a little trick, look for the " HTTP/1.1" string and 
+          // turn the first character into a 0 to clear it out.
+          (strstr(clientline, " HTTP"))[0] = 0;
+          
+          Serial.println(filename);
+          
+          client.println("HTTP/1.1 200 OK");
+          client.println("Content-Type: text/plain");
+          client.println();
+          
+          if (file.open(&root, filename, O_READ)) {
+            Serial.println("Opened!");
+          }
+          
+          int16_t c;
+          while ((c = file.read()) > 0) {
+              // uncomment the serial to debug (slow!)
+              //Serial.print((char)c);
+              client.print((char)c);
+          }
+          file.close();
+        } else {
+          // everything else is a 404
+          client.println("HTTP/1.1 404 Not Found");
+          client.println("Content-Type: text/html");
+          client.println();
+          client.println("<h2>File Not Found!</h2>");
         }
-        if (c == '\n') {
-          // we're starting a new line
-          current_line_is_blank = true;
-        } else if (c != '\r') {
-          // we've gotten a character on the current line
-          current_line_is_blank = false;
-        }
+        break;
       }
     }
     // give the web browser time to receive the data

@@ -76,11 +76,9 @@ void ListFiles(Client client, uint8_t flags) {
   // This code is just copied from SdFile.cpp in the SDFat library
   // and tweaked to print to the client output in html!
   dir_t p;
-  Serial.println("list!");
   
   root.rewind();
   while (root.readDir(p) > 0) {
-    Serial.print("read file");
     // done if past last used entry
     if (p.name[0] == DIR_NAME_FREE) break;
 
@@ -90,13 +88,9 @@ void ListFiles(Client client, uint8_t flags) {
     // only list subdirectories and files
     if (!DIR_IS_FILE_OR_SUBDIR(&p)) continue;
 
-    // print any indent spaces
-    client.print(' ');
-
     // print file name with possible blank fill
     //root.printDirName(*p, flags & (LS_DATE | LS_SIZE) ? 14 : 0);
 
-    uint8_t w = 0;
     for (uint8_t i = 0; i < 11; i++) {
       if (p.name[i] == ' ') continue;
       if (i == 8) {

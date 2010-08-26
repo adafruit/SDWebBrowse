@@ -1,7 +1,12 @@
 /*
- * This sketch will list all files in the root directory and 
- * then do a recursive list of all directories on the SD card.
+ * This sketch uses the microSD card slot on the Arduino Ethernet shield to server
+ * up files over a very minimal browsing interface
+ * 
+ * Some code is from Bill Greiman's SdFatLib examples, some is from the Arduino Ethernet
+ * WebServer example and the rest is from Limor Fried (Adafruit) so its probably under GPL
  *
+ * Tutorial is at http://www.ladyada.net/learn/arduino/ethfiles.html
+ * Pull requests should go to http://github.com/adafruit/SDWebBrowse
  */
 
 #include <SdFat.h>
@@ -77,12 +82,10 @@ void ListFiles(Client client, uint8_t flags) {
   // This code is just copied from SdFile.cpp in the SDFat library
   // and tweaked to print to the client output in html!
   dir_t p;
-  Serial.println("list!");
   
   root.rewind();
   client.println("<ul>");
   while (root.readDir(p) > 0) {
-    Serial.print("read file");
     // done if past last used entry
     if (p.name[0] == DIR_NAME_FREE) break;
 
@@ -134,6 +137,7 @@ void ListFiles(Client client, uint8_t flags) {
   client.println("</ul>");
 }
 
+// How big our line buffer should be. 100 is plenty!
 #define BUFSIZ 100
 
 void loop()
@@ -153,22 +157,25 @@ void loop()
       if (client.available()) {
         char c = client.read();
         
+        // If it isn't a new line, add the character to the buffer
         if (c != '\n' && c != '\r') {
           clientline[index] = c;
           index++;
+          // are we too big for the buffer? start tossing out data
           if (index >= BUFSIZ) 
             index = BUFSIZ -1;
           
-          // read more data!
+          // continue to read more data!
           continue;
         }
         
-        // got a \n or \r new line
+        // got a \n or \r new line, which means the string is done
         clientline[index] = 0;
         
-        // Got a line of data
+        // Print it out for debugging
         Serial.println(clientline);
         
+        // Look for substring such as a request to get the root file
         if (strstr(clientline, "GET / ") != 0) {
           // send a standard http response header
           client.println("HTTP/1.1 200 OK");
@@ -179,14 +186,15 @@ void loop()
           client.println("<h2>Files:</h2>");
           ListFiles(client, LS_SIZE);
         } else if (strstr(clientline, "GET /") != 0) {
-          // this time no space after the /, so a file!
+          // this time no space after the /, so a sub-file!
           char *filename;
           
-          filename = clientline + 5; // after the "GET /"
+          filename = clientline + 5; // look after the "GET /" (5 chars)
           // a little trick, look for the " HTTP/1.1" string and 
-          // turn the first character into a 0 to clear it out.
+          // turn the first character of the substring into a 0 to clear it out.
           (strstr(clientline, " HTTP"))[0] = 0;
           
+          // print the file we want
           Serial.println(filename);
 
           if (! file.open(&root, filename, O_READ)) {

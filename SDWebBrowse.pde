@@ -188,14 +188,20 @@ void loop()
           (strstr(clientline, " HTTP"))[0] = 0;
           
           Serial.println(filename);
+
+          if (! file.open(&root, filename, O_READ)) {
+            client.println("HTTP/1.1 404 Not Found");
+            client.println("Content-Type: text/html");
+            client.println();
+            client.println("<h2>File Not Found!</h2>");
+            break;
+          }
           
+          Serial.println("Opened!");
+                    
           client.println("HTTP/1.1 200 OK");
           client.println("Content-Type: text/plain");
           client.println();
-          
-          if (file.open(&root, filename, O_READ)) {
-            Serial.println("Opened!");
-          }
           
           int16_t c;
           while ((c = file.read()) > 0) {

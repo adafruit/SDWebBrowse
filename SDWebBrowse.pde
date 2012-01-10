@@ -1,9 +1,24 @@
 /*
- * This sketch uses the microSD card slot on the Arduino Ethernet shield to server
- * up files over a very minimal browsing interface
- * 
- * Some code is from Bill Greiman's SdFatLib examples, some is from the Arduino Ethernet
- * WebServer example and the rest is from Limor Fried (Adafruit) so its probably under GPL
+ * USERS OF ARDUINO 0023 AND EARLIER: use the 'SDWebBrowse.pde' sketch...
+ * 'SDWebBrowse.ino' can be ignored.
+ * USERS OF ARDUINO 1.0 AND LATER: **DELETE** the 'SDWebBrowse.pde' sketch
+ * and use ONLY the 'SDWebBrowse.ino' file.  By default, BOTH files will
+ * load when using the Sketchbook menu, and the .pde version will cause
+ * compiler errors in 1.0.  Delete the .pde, then load the sketch.
+ *
+ * I can't explain WHY this is necessary, but something among the various
+ * libraries here appears to be wreaking inexplicable havoc with the
+ * 'ARDUINO' definition, making the usual version test unusable (BOTH
+ * cases evaluate as true).  FML.
+ */
+
+/*
+ * This sketch uses the microSD card slot on the Arduino Ethernet shield
+ * to serve up files over a very minimal browsing interface
+ *
+ * Some code is from Bill Greiman's SdFatLib examples, some is from the
+ * Arduino Ethernet WebServer example and the rest is from Limor Fried
+ * (Adafruit) so its probably under GPL
  *
  * Tutorial is at http://www.ladyada.net/learn/arduino/ethfiles.html
  * Pull requests should go to http://github.com/adafruit/SDWebBrowse
@@ -12,6 +27,7 @@
 #include <SdFat.h>
 #include <SdFatUtil.h>
 #include <Ethernet.h>
+#include <SPI.h>
 
 /************ ETHERNET STUFF ************/
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };

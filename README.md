@@ -8,8 +8,6 @@ Arduino Ethernet + SD Card and are now at [https://github.com/adafruit/Adafruit_
 
 Tutorial: Arduino Ethernet + SD Card [https://learn.adafruit.com/arduino-ethernet-sd-card/](https://learn.adafruit.com/arduino-ethernet-sd-card/)
 
-See the tutorial for details.
-
 All code MIT License, please keep attribution to Adafruit Industries, Limor Fried
 
 Please consider buying your parts at [Adafruit.com](https://www.adafruit.com) to support open source code.
